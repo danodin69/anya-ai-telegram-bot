@@ -10,7 +10,8 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 let config = {
   apiUrl: 'https://api.cvex.trade',
   apiKey: '',
-  privateKeyPath: ''
+  privateKeyPath: '',
+  openaiApiKey: '' // Added for AI functionality
 };
 
 // Load configuration

@@ -8,10 +8,11 @@ const { loadConfig, saveConfig, getConfig } = require('./actions/config');
 const { listContracts, getContractDetails, getMarketData, selectContract } = require('./actions/markets');
 const { estimateOrder, placeOrder } = require('./actions/trading');
 const { getAccountInformation } = require('./actions/account');
+const { processNaturalLanguageOrder } = require('./actions/ai');
 
 // Initialize CLI
 program
-  .name('cvex-cli')
+  .name('cvex')
   .description('CVEX Trading API CLI Tool')
   .version('1.0.0');
 
@@ -45,6 +46,9 @@ program
       const privateKeyPath = await question(`Private Key File Path [${config.privateKeyPath || ''}]: `);
       if (privateKeyPath) config.privateKeyPath = privateKeyPath;
       
+      const openaiApiKey = await question(`OpenAI API Key [${config.openaiApiKey ? '********' : ''}]: `);
+      if (openaiApiKey) config.openaiApiKey = openaiApiKey;
+      
       saveConfig();
     } finally {
       rl.close();
@@ -58,7 +62,7 @@ program
   .action(() => {
     try {
       if (!loadConfig()) {
-        console.log('No configuration found. Please run "cvex-cli config" to set up.');
+        console.log('No configuration found. Please run "cvex config" to set up.');
         return;
       }
       
@@ -68,6 +72,7 @@ program
       console.log(`API URL:              ${config.apiUrl}`);
       console.log(`API Key:              ${config.apiKey ? '********' : 'Not set'}`);
       console.log(`Private Key Path:     ${config.privateKeyPath || 'Not set'}`);
+      console.log(`OpenAI API Key:       ${config.openaiApiKey ? '********' : 'Not set'}`);
       console.log('-'.repeat(30));
     } finally {
       rl.close();
@@ -81,7 +86,7 @@ program
   .action(async () => {
     try {
       if (!loadConfig()) {
-        console.log('Please run "cvex-cli config" first to set up your API credentials.');
+        console.log('Please run "cvex config" first to set up your API credentials.');
         return;
       }
       
@@ -98,7 +103,7 @@ program
   .action(async (id) => {
     try {
       if (!loadConfig()) {
-        console.log('Please run "cvex-cli config" first to set up your API credentials.');
+        console.log('Please run "cvex config" first to set up your API credentials.');
         return;
       }
       
@@ -116,7 +121,7 @@ program
   .action(async () => {
     try {
       if (!loadConfig()) {
-        console.log('Please run "cvex-cli config" first to set up your API credentials.');
+        console.log('Please run "cvex config" first to set up your API credentials.');
         return;
       }
       
@@ -133,7 +138,7 @@ program
   .action(async () => {
     try {
       if (!loadConfig()) {
-        console.log('Please run "cvex-cli config" first to set up your API credentials.');
+        console.log('Please run "cvex config" first to set up your API credentials.');
         return;
       }
       
@@ -164,6 +169,36 @@ program
     }
   });
 
+// AI Trading command
+program
+  .command('ai [input...]')
+  .description('Create orders using natural language')
+  .action(async (input) => {
+    try {
+      if (!loadConfig()) {
+        console.log('Please run "cvex config" first to set up your API credentials.');
+        return;
+      }
+      
+      if (!input || input.length === 0) {
+        console.log('Please provide a natural language order description.');
+        console.log('Example: cvex ai create market order to buy 0.01 MARETH');
+        return;
+      }
+      
+      // Get the full input as a single string
+      const instruction = input.join(' ');
+      
+      // First, get account info for context
+      await getAccountInformation();
+      
+      // Process the natural language order
+      await processNaturalLanguageOrder(instruction, question);
+    } finally {
+      rl.close();
+    }
+  });
+
 // Main execution
 if (require.main === module) {
   program.parse(process.argv);
@@ -180,5 +215,6 @@ module.exports = {
   getMarketData,
   getAccountInformation,
   estimateOrder,
-  placeOrder
+  placeOrder,
+  processNaturalLanguageOrder
 };

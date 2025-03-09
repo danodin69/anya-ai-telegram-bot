@@ -150,7 +150,14 @@ async function placeOrder(orderData, question) {
     }
     
     // Determine the order side for display
-    const orderSide = parseInt(orderData.orderParams.quantity_steps) > 0 ? 'BUY' : 'SELL';
+    let orderSide;
+    if (orderData.orderParams.quantity_steps) {
+      orderSide = parseInt(orderData.orderParams.quantity_steps) > 0 ? 'BUY' : 'SELL';
+    } else if (orderData.orderParams.quantity_contracts) {
+      orderSide = parseFloat(orderData.orderParams.quantity_contracts) > 0 ? 'BUY' : 'SELL';
+    } else {
+      orderSide = parseFloat(orderData.orderParams.quantity_assets) > 0 ? 'BUY' : 'SELL';
+    }
     console.log(`\nSubmitting ${orderSide} order...`);
     
     // Create order parameters
@@ -161,12 +168,18 @@ async function placeOrder(orderData, question) {
       limit_price: orderData.orderParams.limit_price,
       time_in_force: orderData.orderParams.time_in_force,
       reduce_only: orderData.orderParams.reduce_only,
-      quantity_steps: orderData.orderParams.quantity_steps,
-      quantity_contracts: "",
-      quantity_assets: "",
       timestamp: Date.now(),
       recv_window: 30000
     };
+    
+    // Only include the quantity field that has a value
+    if (orderData.orderParams.quantity_steps) {
+      orderParams.quantity_steps = orderData.orderParams.quantity_steps;
+    } else if (orderData.orderParams.quantity_contracts) {
+      orderParams.quantity_contracts = orderData.orderParams.quantity_contracts;
+    } else if (orderData.orderParams.quantity_assets) {
+      orderParams.quantity_assets = orderData.orderParams.quantity_assets;
+    }
     
     // Submit the order - ensure we use the exact same structure as the working example
     // First create the message to sign and ensure it's properly formatted
