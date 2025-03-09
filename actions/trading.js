@@ -7,6 +7,14 @@ async function estimateOrder(contract, question) {
     console.log('\nOrder Estimation Form:');
     console.log('-'.repeat(50));
     
+    // Get order side (buy or sell)
+    let orderSide;
+    while (true) {
+      orderSide = await question('Order side (buy/sell): ');
+      if (orderSide.toLowerCase() === 'buy' || orderSide.toLowerCase() === 'sell') break;
+      console.log('Invalid order side. Please enter "buy" or "sell".');
+    }
+    
     // Get order type
     let orderType;
     while (true) {
@@ -56,6 +64,11 @@ async function estimateOrder(contract, question) {
       console.log('Invalid quantity. Please enter a positive integer.');
     }
     
+    // Convert orderSide to quantity_steps format (positive for buy, negative for sell)
+    const formattedQuantitySteps = orderSide.toLowerCase() === 'buy' 
+      ? quantitySteps 
+      : `-${quantitySteps}`;
+    
     // Create estimation payload
     const estimatePayload = {
       contract: contract.contract_id.toString(),
@@ -63,7 +76,7 @@ async function estimateOrder(contract, question) {
       limit_price: limitPrice,
       time_in_force: timeInForce,
       reduce_only: reduceOnly,
-      quantity_steps: quantitySteps,
+      quantity_steps: formattedQuantitySteps,
       quantity_contracts: '',
       quantity_assets: ''
     };
@@ -83,16 +96,17 @@ async function estimateOrder(contract, question) {
         return null;
       }
       
-      console.log(`Trading Fee:               ${formatNumber(estimationResult.trading_fee)}`);
-      console.log(`Operational Fee:           ${formatNumber(estimationResult.operational_fee)}`);
-      console.log(`Realized Profit:           ${formatNumber(estimationResult.realized_profit)}`);
-      console.log(`Taker Amount (Base):       ${formatNumber(estimationResult.taker_base_amount)}`);
-      console.log(`Taker Amount (Tokens):     ${formatNumber(estimationResult.taker_tokens_amount)}`);
-      console.log(`Current Equity:            ${formatNumber(estimationResult.current_equity)}`);
-      console.log(`New Equity:                ${formatNumber(estimationResult.new_equity)}`);
-      console.log(`Current Leverage:          ${formatNumber(estimationResult.current_leverage)}`);
-      console.log(`New Leverage:              ${formatNumber(estimationResult.new_leverage)}`);
-      console.log(`Est. Liquidation Price:    ${formatNumber(estimationResult.estimated_liquidation_price)}`);
+      console.log(`Order Type:                 ${orderSide.toUpperCase()} ${orderType}`);
+      console.log(`Trading Fee:                ${formatNumber(estimationResult.trading_fee)}`);
+      console.log(`Operational Fee:            ${formatNumber(estimationResult.operational_fee)}`);
+      console.log(`Realized Profit:            ${formatNumber(estimationResult.realized_profit)}`);
+      console.log(`Taker Amount (Base):        ${formatNumber(estimationResult.taker_base_amount)}`);
+      console.log(`Taker Amount (Tokens):      ${formatNumber(estimationResult.taker_tokens_amount)}`);
+      console.log(`Current Equity:             ${formatNumber(estimationResult.current_equity)}`);
+      console.log(`New Equity:                 ${formatNumber(estimationResult.new_equity)}`);
+      console.log(`Current Leverage:           ${formatNumber(estimationResult.current_leverage)}`);
+      console.log(`New Leverage:               ${formatNumber(estimationResult.new_leverage)}`);
+      console.log(`Est. Liquidation Price:     ${formatNumber(estimationResult.estimated_liquidation_price)}`);
       console.log('-'.repeat(50));
       
       // Return the result with parameters
@@ -135,7 +149,9 @@ async function placeOrder(orderData, question) {
       return;
     }
     
-    console.log('\nSubmitting order...');
+    // Determine the order side for display
+    const orderSide = parseInt(orderData.orderParams.quantity_steps) > 0 ? 'BUY' : 'SELL';
+    console.log(`\nSubmitting ${orderSide} order...`);
     
     // Create order parameters
     const orderParams = {
@@ -165,7 +181,7 @@ async function placeOrder(orderData, question) {
     
     if (result) {
       if (result.status === 'success' || result.transaction_hash) {
-        console.log('Order successfully submitted!');
+        console.log(`${orderSide} order successfully submitted!`);
         console.log(`Transaction Hash: ${result.transaction_hash || 'N/A'}`);
         
         if (result.events && result.events.length > 0) {

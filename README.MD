@@ -9,8 +9,9 @@ A command-line interface for interacting with the CVEX Trading API.
 - View market data (prices, orderbook, recent trades)
 - Get detailed contract information
 - View account details (portfolio, positions, orders)
-- Interactive trading interface
+- Interactive trading interface for both buying and selling
 - Order estimation before placement
+- Support for market and limit orders
 
 ## Installation
 
@@ -71,9 +72,25 @@ Configuration is stored in `~/.cvex-cli/config.json`.
 
 This will guide you through:
 1. Selecting a contract
-2. Setting order parameters
-3. Viewing order estimation
-4. Confirming order placement
+2. Choosing order side (buy or sell)
+3. Setting order parameters (type, price, quantity, etc.)
+4. Viewing order estimation
+5. Confirming order placement
+
+## Trading Parameters
+
+When placing an order, you'll be prompted for:
+
+- **Order Side**: Buy or Sell
+- **Order Type**: Market or Limit
+- **Limit Price**: (for limit orders) The price at which you want to execute
+- **Time in Force**: 
+  - GTC (Good Till Cancel) - Order remains active until filled or cancelled
+  - IOC (Immediate or Cancel) - Fill what's possible immediately, cancel the rest
+  - FOK (Fill or Kill) - Fill the entire order immediately or cancel
+  - PO (Post Only) - Order must be posted to the order book, not matched immediately
+- **Reduce Only**: Yes/No - Whether the order should only reduce an existing position
+- **Quantity**: The size of your order in steps
 
 ## Security Notes
 
