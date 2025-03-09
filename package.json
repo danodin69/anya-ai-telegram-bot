@@ -1,0 +1,24 @@
+{
+    "name": "cvex-cli",
+    "version": "1.0.0",
+    "description": "Command-line interface for the CVEX Trading API",
+    "main": "cvex-cli.js",
+    "scripts": {
+        "start": "node cvex-cli.js"
+    },
+    "keywords": [
+        "cvex",
+        "trading",
+        "cli",
+        "crypto"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "axios": "^1.8.2",
+        "commander": "^11.1.0"
+    },
+    "bin": {
+        "cvex-cli": "./cvex-cli.js"
+    }
+}
