@@ -8,7 +8,7 @@ const { loadConfig, saveConfig, getConfig } = require('./actions/config');
 const { listContracts, getContractDetails, getMarketData, selectContract } = require('./actions/markets');
 const { estimateOrder, placeOrder } = require('./actions/trading');
 const { getAccountInformation } = require('./actions/account');
-const { processNaturalLanguageOrder } = require('./actions/ai');
+const { processNaturalLanguageOrder, analyzeMarketOpportunities } = require('./actions/ai');
 
 // Initialize CLI
 program
@@ -199,6 +199,31 @@ program
     }
   });
 
+// AI Market Analysis command
+program
+  .command('analyze')
+  .description('Analyze markets and suggest trading opportunities')
+  .action(async () => {
+    try {
+      if (!loadConfig()) {
+        console.log('Please run "cvex config" first to set up your API credentials.');
+        return;
+      }
+      
+      // Check if OpenAI API key is configured
+      const config = getConfig();
+      if (!config.openaiApiKey) {
+        console.log('OpenAI API key not configured. Please run "cvex config" to set it up.');
+        return;
+      }
+      
+      // Run the market analysis
+      await analyzeMarketOpportunities(question);
+    } finally {
+      rl.close();
+    }
+  });
+
 // Main execution
 if (require.main === module) {
   program.parse(process.argv);
@@ -216,5 +241,6 @@ module.exports = {
   getAccountInformation,
   estimateOrder,
   placeOrder,
-  processNaturalLanguageOrder
+  processNaturalLanguageOrder,
+  analyzeMarketOpportunities
 };
