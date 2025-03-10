@@ -8,7 +8,7 @@ const { loadConfig, saveConfig, getConfig } = require('./actions/config');
 const { listContracts, getContractDetails, getMarketData, selectContract } = require('./actions/markets');
 const { estimateOrder, placeOrder } = require('./actions/trading');
 const { getAccountInformation } = require('./actions/account');
-const { processNaturalLanguageOrder, analyzeMarketOpportunities } = require('./actions/ai');
+const { processNaturalLanguageOrder, analyzeMarketOpportunities, testMarketAnalysisAndOrderEstimation } = require('./actions/ai');
 
 // Initialize CLI
 program
@@ -203,7 +203,8 @@ program
 program
   .command('analyze')
   .description('Analyze markets and suggest trading opportunities')
-  .action(async () => {
+  .option('--test', 'Run in test mode to diagnose issues')
+  .action(async (options) => {
     try {
       if (!loadConfig()) {
         console.log('Please run "cvex config" first to set up your API credentials.');
@@ -217,8 +218,14 @@ program
         return;
       }
       
-      // Run the market analysis
-      await analyzeMarketOpportunities(question);
+      if (options.test) {
+        // Run in test mode
+        console.log('Running market analysis in TEST MODE');
+        await testMarketAnalysisAndOrderEstimation(question);
+      } else {
+        // Run the normal market analysis
+        await analyzeMarketOpportunities(question);
+      }
     } finally {
       rl.close();
     }
@@ -242,5 +249,6 @@ module.exports = {
   estimateOrder,
   placeOrder,
   processNaturalLanguageOrder,
-  analyzeMarketOpportunities
+  analyzeMarketOpportunities,
+  testMarketAnalysisAndOrderEstimation
 };
