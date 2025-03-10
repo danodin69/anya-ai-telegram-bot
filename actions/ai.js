@@ -287,31 +287,68 @@ async function analyzeMarketOpportunities(question) {
     
     // Collect detailed data for each contract
     for (const contract of contractsToAnalyze) {
-      console.log(`Analyzing ${contract.symbol}...`);
-      
-      // Get contract details
-      const details = await getContractDetails(contract.contract_id);
-      
-      // Get price history
-      const priceHistory = await apiRequest('GET', `/v1/market/futures/${contract.contract_id}/price?period=1h&count=24`);
-      
-      // Get order book
-      const orderBook = await apiRequest('GET', `/v1/market/futures/${contract.contract_id}/order-book?price_step=1`);
-      
-      // Get recent trades
-      const recentTrades = await apiRequest('GET', `/v1/market/futures/${contract.contract_id}/latest-trades?count=20`);
-      
-      marketData.push({
-        contract_id: contract.contract_id,
-        symbol: contract.symbol,
-        details,
-        priceHistory: priceHistory.data || [],
-        orderBook: orderBook || { bids: [], asks: [] },
-        recentTrades: recentTrades.trades || []
-      });
+      try {
+        console.log(`Analyzing ${contract.symbol}...`);
+        
+        // Get contract details
+        const details = await getContractDetails(contract.contract_id);
+        
+        // Get price history
+        let priceHistory = { data: [] };
+        try {
+          priceHistory = await apiRequest('GET', `/v1/market/futures/${contract.contract_id}/price?period=1h&count=24`);
+        } catch (error) {
+          console.log(`Warning: Could not fetch price history for ${contract.symbol}: ${error.message}`);
+        }
+        
+        // Get order book with valid price step
+        // Use contract price_tick as guidance for price_step
+        let priceStep = '5';
+        if (details && details.price_tick) {
+          const priceTick = parseInt(details.price_tick);
+          if (priceTick >= 5000) priceStep = '5000';
+          else if (priceTick >= 2500) priceStep = '2500';
+          else if (priceTick >= 500) priceStep = '500';
+          else if (priceTick >= 50) priceStep = '50';
+          else priceStep = '5';
+        }
+        
+        let orderBook = { bids: [], asks: [] };
+        try {
+          orderBook = await apiRequest('GET', `/v1/market/futures/${contract.contract_id}/order-book?price_step=${priceStep}`);
+        } catch (error) {
+          console.log(`Warning: Could not fetch order book for ${contract.symbol}: ${error.message}`);
+        }
+        
+        // Get recent trades
+        let recentTrades = { trades: [] };
+        try {
+          recentTrades = await apiRequest('GET', `/v1/market/futures/${contract.contract_id}/latest-trades?count=20`);
+        } catch (error) {
+          console.log(`Warning: Could not fetch recent trades for ${contract.symbol}: ${error.message}`);
+        }
+        
+        marketData.push({
+          contract_id: contract.contract_id,
+          symbol: contract.symbol,
+          details,
+          priceHistory: priceHistory.data || [],
+          orderBook: orderBook || { bids: [], asks: [] },
+          recentTrades: recentTrades.trades || []
+        });
+      } catch (error) {
+        console.log(`Error analyzing ${contract.symbol}: ${error.message}`);
+        // Continue with the next contract
+        continue;
+      }
     }
     
     // Step 4: Use AI to analyze the market data and suggest opportunities
+    if (marketData.length === 0) {
+      console.log('\nNo market data available for analysis. Please try again later.');
+      return;
+    }
+    
     console.log('\nAnalyzing market data with AI...');
     const openai = getOpenAIClient();
     
@@ -518,32 +555,56 @@ Be specific, practical and concise. Focus on actionable trades.`
 function calculateVolatility(prices) {
   if (!prices || prices.length < 2) return "N/A";
   
-  // Calculate returns
-  const returns = [];
-  for (let i = 1; i < prices.length; i++) {
-    returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+  // Filter out invalid price data
+  const validPrices = prices.filter(p => !isNaN(p) && p > 0);
+  if (validPrices.length < 2) return "Insufficient data";
+  
+  try {
+    // Calculate returns
+    const returns = [];
+    for (let i = 1; i < validPrices.length; i++) {
+      // Avoid division by zero
+      if (validPrices[i-1] !== 0) {
+        returns.push((validPrices[i] - validPrices[i-1]) / validPrices[i-1]);
+      }
+    }
+    
+    if (returns.length === 0) return "Calculation error";
+    
+    // Calculate standard deviation of returns
+    const mean = returns.reduce((sum, r) => sum + r, 0) / returns.length;
+    const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length;
+    const stdDev = Math.sqrt(variance);
+    
+    // Check for NaN or Infinite values
+    if (isNaN(stdDev) || !isFinite(stdDev)) return "Calculation error";
+    
+    // Annualize the volatility (assuming hourly data)
+    const annualizedVol = stdDev * Math.sqrt(24 * 365) * 100;
+    
+    if (annualizedVol < 50) return "Low";
+    if (annualizedVol < 100) return "Medium";
+    return "High";
+  } catch (error) {
+    console.log(`Error calculating volatility: ${error.message}`);
+    return "Calculation error";
   }
-  
-  // Calculate standard deviation of returns
-  const mean = returns.reduce((sum, r) => sum + r, 0) / returns.length;
-  const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length;
-  const stdDev = Math.sqrt(variance);
-  
-  // Annualize the volatility (assuming hourly data)
-  const annualizedVol = stdDev * Math.sqrt(24 * 365) * 100;
-  
-  if (annualizedVol < 50) return "Low";
-  if (annualizedVol < 100) return "Medium";
-  return "High";
 }
 
 // Helper function to analyze price trend
 function analyzePriceTrend(prices) {
   if (!prices || prices.length < 6) return "Insufficient data";
   
+  // Check if we have enough valid prices (not NaN)
+  const validPrices = prices.filter(p => !isNaN(p));
+  if (validPrices.length < 6) return "Insufficient valid data";
+  
   // Simple moving average
-  const shortTermAvg = prices.slice(-3).reduce((sum, p) => sum + p, 0) / 3;
-  const longTermAvg = prices.slice(-12).reduce((sum, p) => sum + p, 0) / 12;
+  const shortTermAvg = validPrices.slice(-3).reduce((sum, p) => sum + p, 0) / 3;
+  const longTermAvg = validPrices.slice(-12).reduce((sum, p) => sum + p, 0) / Math.min(12, validPrices.length);
+  
+  // Protect against division by zero or invalid values
+  if (isNaN(shortTermAvg) || isNaN(longTermAvg) || longTermAvg === 0) return "Calculation error";
   
   // Trend detection
   if (shortTermAvg > longTermAvg * 1.03) return "Strong uptrend";
