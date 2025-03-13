@@ -43,8 +43,8 @@ Run the configuration command to set up your API credentials:
 
 You'll need to provide:
 - API URL (defaults to https://api.cvex.trade)
-- API Key
-- Path to your Ed25519 private key file (PEM format)
+- API Key (generate at https://app.cvex.trade/futures/sessions)
+- Path to your Ed25519 private key file in PEM format (generate at https://app.cvex.trade/futures/sessions)
 - OpenAI API Key (for AI features)
 
 Configuration is stored in `~/.cvex-cli/config.json`.
